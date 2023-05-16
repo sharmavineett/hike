@@ -246,7 +246,7 @@ defmodule TestHike do
   import Hike.Either
 
   # Simulating a database fetch function
-  @spec fetch_user(number) :: Hike.Either.t()
+  @spec fetch_user(number) :: Hike.Either.either(%User{}) | Hike.Either.either(String.t())
   def fetch_user(id) do
     # Simulating a database query to fetch a user by ID
     # Returns an Either<User, string> with left(user) if the user is found
@@ -337,7 +337,7 @@ iex> may_fail = Hike.MayFail.success(42)
 %Hike.MayFail{failure: nil, success: 42, is_success?: true}
 ```
 ```elixir
-# same example can be rewritten with `Either`
+# same example can be rewritten with `MayFail`
 # Define a User struct
 defmodule User do
   @derive Jason.Encoder

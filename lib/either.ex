@@ -1,5 +1,108 @@
 defmodule Hike.Either do
   alias __MODULE__, as: Either
+  @moduledoc"""
+  `Hike.Either` represents a value that can be one of two possibilities: either a `left` state or a `right` state.
+  It is commonly used in error handling or when a function can return different types of
+  results.
+
+  Creating an Either
+
+  To create an Either instance,
+  you can use the `Hike.Either.right/1` and `Hike.Either.left/1` function to wrap a value in
+  `right` and `left` state respectively :
+
+  ```elixir
+    iex> Hike.Either.right(5)
+    %Hike.Either{l_value: nil, r_value: 5, is_left?: false}
+    iex> Hike.Either.left("Hello")
+    %Hike.Either{l_value: "Hello", r_value: nil, is_left?: true}
+  ```
+  ```elixir
+  # Example can be written with `Either`
+  # Define a User struct
+  defmodule User do
+    @derive Jason.Encoder
+    defstruct [:id, :age, :name]
+  end
+  defmodule TestHike do
+    # Import the Hike.Either module
+    import Hike.Either
+
+    # Simulating a database fetch function
+    @spec fetch_user(number) :: Hike.Either.either(%User{}) | Hike.Either.either()
+    def fetch_user(id) do
+      # Simulating a database query to fetch a user by ID
+      # Returns an Either<User, string> with left(user) if the user is found
+      # Returns an Either<User, string> with right("User not found") if the user is not found
+      case id do
+        1 -> left(%User{id: 1, age: 30, name: "Vineet Sharma"})
+        2 -> left(%User{id: 2, age: 20, name: "Jane Smith"})
+        _ -> right("User not found")
+      end
+    end
+
+    # Function to update the user's name to uppercase if possible
+    # This function takes a User struct and returns an Either<User, string>
+    def update_name_to_uppercase(user) do
+      case user.name do
+        nil -> right("User name is missing")
+        name ->  left(%User{user | name: String.upcase(name)})
+      end
+    end
+
+    # Function to increase the user's age by one
+    # This function takes a User struct and returns a real data type User with updated values.
+    def increase_age_by_1(user) do
+      %User{user | age: user.age + 1}
+    end
+
+    # Function to print a user struct as a JSON-represented string
+    def print_user_as_json(user) do
+      user
+      |> Jason.encode!()
+      |> IO.puts()
+    end
+
+    # Example: Fetching a user from the database, updating the name, and matching the result
+    def test_user() do
+      user_id = 1
+
+      # Fetch the user from the database
+      fetch_user(user_id)
+      # Update the name to uppercase using bind
+      |> bind_left(&update_name_to_uppercase/1)
+      # Increase the age by one using map
+      |> map_left(&increase_age_by_1/1)
+      # Print the user as a JSON string using map
+      |> map_left(&print_user_as_json/1)
+      # finally match the respective result with a appropriate function.
+      |> match(fn x -> x end, fn err ->err end)
+
+      user_id = 3
+
+      # Fetch the user from the database
+      fetch_user(user_id)
+      # Update the name to uppercase using bind
+      |> bind_left(&update_name_to_uppercase/1)
+      # Increase the age by one using map
+      |> map_left(&increase_age_by_1/1)
+      # Print the user as a JSON string using map
+      |> map_left(&print_user_as_json/1)
+      # finally match the respective result with a appropriate function.
+      |> match(fn x -> x end, fn err -> err end)
+    end
+  end
+  ```
+
+  ```shell
+  #output
+  iex> TestHike.test_user
+  #user_id = 1
+      {"age":31,"id":1,"name":"VINEET SHARMA"}
+  #user_id = 3
+      "User not found"
+  ```
+"""
 
   @typedoc """
   generic input type `<T>`.

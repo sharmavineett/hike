@@ -14,8 +14,74 @@ defmodule Hike do
 
   This implementation provides shorthand functions to work with Optional data, including mapping, filtering, applying and many more functions to the value
   inside the Optional data.
-  """
 
+  purpose of this is to provide shorthand functions at `Hike` module itself.
+
+  ## Example
+
+      iex> option = %Hike.option(42)
+      %Hike.Option{value: 42}
+
+      iex> eth = %Hike.either(42)
+      %Hike.Either{l_value: nil, r_value: 42, is_left?: false}
+
+      iex> Hike.either({:ok, 42})
+      %Hike.Either{l_value: nil, r_value: 42, is_left?: false}
+
+      iex> Hike.either({:error, :ERROR_MSG})
+      %Hike.Either{l_value: :ERROR_MSG, r_value: nil, is_left?: true}
+
+      iex> may_fail = Hike.mayfail(9)
+      %Hike.MayFail{failure: nil, success: 9, is_success?: true}
+
+      iex> Hike.mayfail({:ok, 9})
+      %Hike.MayFail{failure: nil, success: 9, is_success?: true}
+
+      iex> Hike.mayfail({:error, "ERR_MSG"})
+      %Hike.MayFail{failure: "ERR_MSG", success: nil, is_success?: false}
+
+      iex> Hike.map(option, &(&1 * 2))
+      %Hike.Option{value: 84}
+
+      iex> Hike.map_left(eth, &(&1 * 2))
+      %Hike.Either{l_value: nil, r_value: 42, is_left?: false}
+
+      iex> Hike.map_right(eth, &(&1 * 2))
+      %Hike.Either{l_value: nil, r_value: 84, is_left?: false}
+
+      iex> Hike.map_success(may_fail, &(&1 * 2))
+      %Hike.MayFail{failure: nil, success: 18, is_success?: true}
+
+      iex> Hike.apply(option, &(&1 + 10))
+      %Hike.Option{value: 52}
+
+  ```elixir
+  defmodule HikeTest do
+    alias Hike
+    def divide(x, y), do: x / y
+
+    def test_divide(x, y) do
+      Hike.try(&divide/2, x, y)
+    end
+  end
+  ```
+
+  ```elixir
+  iex> HikeTest.test_divide(4, 2) |> Hike.map_success(fn x -> x + 1 end)
+  %Hike.MayFail{failure: nil, success: 3.0, is_success?: true}
+  iex> HikeTest.test_divide(4, 0) |> Hike.map_success(fn x -> x + 1 end)
+  %Hike.MayFail{
+  failure: "bad argument in arithmetic expression",
+  success: nil,
+  is_success?: false
+  }
+  # Application didn't crash but successfully return error.
+  ```
+   like this example all other function can be used from `Hike` module itself.
+
+
+
+  """
   alias Hike.Option, as: Option
   alias Hike.Either, as: Either
   alias Hike.MayFail, as: MayFail

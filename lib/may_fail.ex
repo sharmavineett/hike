@@ -1,5 +1,120 @@
 defmodule Hike.MayFail do
   alias Hike.MayFail, as: MayFail
+  @moduledoc """
+
+  `Hike.MayFail` represents a value that may either succeed with a value or fail with
+  an error.
+  It combines the functionality of `Hike.Option` and `Hike.Either`,
+  making it suitable for scenarios where a value can be optional and can
+  also potentially fail.
+
+  Creating a MayFail
+
+  To create a `MayFail` instance, you can use the `Hike.MayFail.success/1`
+  function to wrap a success value:
+
+  ```elixir
+  iex> may_fail = Hike.MayFail.success(42)
+  %Hike.MayFail{failure: nil, success: 42, is_success?: true}
+  iex> may_fail = Hike.MayFail.failure(:error)
+  %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+  ```
+  ```elixir
+  # same example can be rewritten with `MayFail`
+  # Define a User struct
+  defmodule User do
+  @derive Jason.Encoder
+  defstruct [:id, :age, :name]
+  end
+
+  defmodule TestHike do
+  # Import the Hike.MayFail module
+  import Hike.MayFail
+
+  # Simulating a database fetch function
+  @spec fetch_user(number) :: Hike.MayFail.mayfail(String.t()) | Hike.MayFail.mayfail_success(%User{})
+  def fetch_user(id) do
+    # Simulating a database query to fetch a user by ID
+    # Returns an MayFail<string, User> with success(user) if the user is found
+    # Returns an MayFail<string, User> with failure("User not found") if the user is not found
+    case id do
+      1 -> success(%User{id: 1, age: 30, name: "Vineet Sharma"})
+      2 -> success(%User{id: 2, age: 20, name: nil})
+      _ -> failure("User not found")
+    end
+  end
+
+  # Function to update the user's name to uppercase if possible
+  # This function takes a User struct and returns an MayFail<string, User>
+  def update_name_to_uppercase(user) do
+  case user.name do
+    nil -> failure("User name is missing")
+    name -> success(%User{user | name: String.upcase(name)})
+  end
+  end
+
+  # Function to increase the user's age by one
+  # This function takes a User struct and returns a real data type User with updated values.
+  def increase_age_by_1(user) do
+    %User{user | age: user.age + 1}
+  end
+
+  # Function to print a user struct as a JSON-represented string
+  def print_user_as_json(user) do
+    user
+    |> Jason.encode!()
+    |> IO.puts()
+  end
+
+  @spec test_user() :: :ok
+  def test_user() do
+    fetch_user(1)
+    |> bind_success(&update_name_to_uppercase/1)
+    |> map_success(&increase_age_by_1/1)
+    |> IO.inspect()
+    |> match(&IO.puts/1, &print_user_as_json/1)
+
+    fetch_user(2)
+    |> bind_success(&update_name_to_uppercase/1)
+    |> map_success(&increase_age_by_1/1)
+    |> IO.inspect()
+    |> match(&IO.puts/1, &print_user_as_json/1)
+
+    fetch_user(3)
+    |> bind_success(&update_name_to_uppercase/1)
+    |> map_success(&increase_age_by_1/1)
+    |> IO.inspect()
+    |> match(&IO.puts/1, &print_user_as_json/1)
+
+    :ok
+  end
+  end
+  ```
+
+  ```elixir
+  iex> TestHike.test_user
+  # user id =1
+  %Hike.MayFail{
+  failure: nil,
+  success: %User{id: 1, age: 31, name: "VINEET SHARMA"},
+  is_success?: true
+  }
+  {"age":31,"id":1,"name":"VINEET SHARMA"}
+
+  # user id = 2
+
+  %Hike.MayFail{failure: "User name is missing", success: nil, is_success?: false}
+  User name is missing
+
+  #user id = 3
+
+  %Hike.MayFail{failure: "User not found", success: nil, is_success?: false}
+  User not found
+  :ok
+  ```
+
+  """
+
 
   @typedoc """
   generic input type `<T>`.

@@ -3,7 +3,7 @@ defmodule Hike.Option do
 
   @moduledoc """
   The `Hike.Option` module provides an implementation of the Optional data type.
-  It defines a struct `Option` with a single field `value` which can either be `@none`
+  It defines a struct `Option` with a single field `value` which can either be `@none nil`
   or any other value of type `t`. This implementation provides functions to work with
   Optional data, including mapping, filtering, applying and many more functions to the value
   inside the Optional data.
@@ -21,6 +21,88 @@ defmodule Hike.Option do
 
       iex> Hike.Option.apply(option, &(&1 + 10))
       %Hike.Option{value: 52}
+
+```elixir
+  # Define a User struct
+  defmodule User do
+  @derive {Jason.Encoder, only: [:id,:age, :name]}
+  defstruct [:id, :age, :name]
+  end
+
+  defmodule TestHike do
+  # Import the Hike.Option module
+  import Hike.Option
+
+  # Simulating a database fetch function
+  @spec fetch_user(number) :: Hike.Option.t()
+  # Simulating a database fetch function
+  def fetch_user(id) do
+    # Simulating a database query to fetch a user by ID
+    # Returns an Option<User> with some(user) if the user is found
+    # Returns an Option<User> with none() if the user is not found
+    case id do
+      1 -> some(%User{id: 1, age: 30, name: "Vineet Sharma"})
+      2 -> some(%User{id: 2, age: 20, name: "Jane Smith"})
+      _ -> none()
+    end
+  end
+
+  # Function to update the user's name to uppercase
+  # This function takes a user, a real data type, and returns an elevated data type Option
+  def update_name_to_uppercase(user) do
+    uppercase_name = String.upcase(user.name)
+    some(%User{user | name: uppercase_name})
+  end
+
+
+  #   for above function another version could be this is intentionally done to show bind functionality
+  #   def update_name_to_uppercase(user) do
+  #    uppercase_name = String.upcase(user.name)
+  #    %User{user | name: uppercase_name}
+  #  end
+  # for this case map function will be used like its been used for `increase_age_by1`
+
+
+  # Function to increase the user's age by one
+  # This function takes a user, a real data type, and returns a real data type user
+  def increase_age_by1(user) do
+    %User{user | age: user.age + 1}
+  end
+
+  # Function to print a user struct as a JSON-represented string
+  def print_user_as_json(user) do
+    Jason.encode!(user) |> IO.puts
+  end
+
+  # Example: Fetching a user from the database, updating the name, and matching the result
+  def test_user() do
+    user_id = 1
+
+    # 1. Expressiveness: Using Hike's Option type to handle optional values
+    fetch_user(user_id)
+    |> bind(&update_name_to_uppercase/1)
+    |> map(&increase_age_by1/1)
+    |> match(&print_user_as_json/1, fn -> IO.puts("User not found") end)
+
+    user_id = 3
+
+    # 2. Safer and more predictable code: Handling all possible cases explicitly
+    fetch_user(user_id)
+    |> bind(&update_name_to_uppercase/1)
+    |> map(&increase_age_by1/1)
+    |> match(&print_user_as_json/1, fn -> IO.puts("User not found") end)
+  end
+  end
+  ```
+  ### Output
+
+  ```shell
+  iex> TestHike.test_user
+  # User ID: 1
+  {"id":1,"age":31,"name":"JOHN DOE"}
+  # User ID: 3
+  User not found
+  ```
 
   For more information on how to use this module, please see the documentation for
   the individual functions.
