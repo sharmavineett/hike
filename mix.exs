@@ -1,6 +1,6 @@
 defmodule Hike.MixProject do
   use Mix.Project
-  @source_url ""
+  @source_url "https://github.com/sharmavineett/hike"
   @version "0.0.1"
 
   def project do
@@ -10,7 +10,7 @@ defmodule Hike.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description: "The `Hike` module provides an implementation of the Optional data types.",
+      description: "The `Hike` module provides an implementation of the elevated data types.",
       package: package()
     ]
   end
@@ -37,9 +37,7 @@ defmodule Hike.MixProject do
       maintainers: ["Vineet Sharma"],
       files: ~w(CHANGELOG.md lib LICENSE mix.exs README.md),
       links: %{
-        "GitHub" => @source_url,
-        "Changelog" => "https://hexdocs.pm/ex_doc/changelog.html",
-        "Writing documentation" => "https://hexdocs.pm/elixir/writing-documentation.html"
+        "GitHub" => @source_url
       }
     ]
   end
