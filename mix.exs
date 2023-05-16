@@ -1,7 +1,7 @@
 defmodule Hike.MixProject do
   use Mix.Project
   @source_url "https://github.com/sharmavineett/hike"
-  @version "0.0.1"
+  @version "0.0.2"
 
   def project do
     [
