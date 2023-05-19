@@ -65,7 +65,7 @@ To use Hike in your Elixir project, you can add it as a dependency in your mix.e
 ```elixir
 def deps do
   [
-    {:hike, "~> 0.0.2"}
+    {:hike, "~> 0.1.0"}
   ]
 end
 ```

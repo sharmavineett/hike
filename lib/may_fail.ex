@@ -1,5 +1,6 @@
 defmodule Hike.MayFail do
   alias Hike.MayFail, as: MayFail
+
   @moduledoc """
 
   `Hike.MayFail` represents a value that may either succeed with a value or fail with
@@ -114,7 +115,6 @@ defmodule Hike.MayFail do
   ```
 
   """
-
 
   @typedoc """
   generic input type `<T>`.
@@ -253,7 +253,7 @@ defmodule Hike.MayFail do
   ## Example
 
       iex> apply_func = fn x -> (x + 2) end
-      iex> MayFail.failure(1) |> MayFail.apply_success(apply_func)
+      ...> MayFail.failure(1) |> MayFail.apply_success(apply_func)
       %Hike.MayFail{failure: 1, success: nil, is_success?: false}
 
       iex> MayFail.success(1) |> MayFail.apply_success(apply_func)
@@ -272,14 +272,44 @@ defmodule Hike.MayFail do
     do: failure(error)
 
   @doc """
+  Applies the provided function `func` to the `Success`value of `MayFail` wrapped in a `Task` and
+  returns a new task with the result.
+
+  ## Examples
+
+      iex> task =  Task.async(fn -> Hike.MayFail.failure(:error) end)
+      ...> applied_task = apply_success_async(task, fn x-> x end)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+
+
+      iex> task = Task.async(fn -> Hike.MayFail.success(10) end)
+      ...> applied_task = apply_success_async(task, fn x-> x * x end)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: nil, success: 100, is_success?: true}
+
+  """
+
+  @spec apply_success_async(Task.t(), func(t())) :: Task.t()
+  def apply_success_async(wrapped_task, func) when is_function(func, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.MayFail{} = mf ->
+        Task.async(fn ->
+          apply_success(mf, func)
+        end)
+    end
+  end
+
+  @doc """
 
   ## Example
 
       iex> apply_func = fn x -> x + 2 end
-      iex> MayFail.failure(1) |> MayFail.apply_failure(apply_func)
+      ...> MayFail.failure(1) |> MayFail.apply_failure(apply_func)
       %Hike.MayFail{failure: 3, success: nil, is_success?: false}
 
-      iex> MayFail.success(1) |> MayFail.apply_failure(apply_func)
+      iex> apply_func = fn x -> x + 2 end
+      ...> MayFail.success(1) |> MayFail.apply_failure(apply_func)
       %Hike.MayFail{failure: nil, success: 1, is_success?: true}
 
 
@@ -295,11 +325,40 @@ defmodule Hike.MayFail do
     do: success(value)
 
   @doc """
+  Applies the provided function `func` to the failure value of `MayFail` wrapped in a `Task` and
+  returns a new task with the result.
+
+  ## Examples
+
+      iex> task =  Task.async(fn -> Hike.MayFail.failure(:error) end)
+      ...> applied_task = apply_failure_async(task, fn x-> x end)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+
+
+      iex> task = Task.async(fn -> Hike.MayFail.success(10) end)
+      ...> applied_task = apply_failure_async(task, &String.upcase/1)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: nil, success: 10, is_success?: true}
+
+  """
+
+  @spec apply_failure_async(Task.t(), func(t())) :: Task.t()
+  def apply_failure_async(wrapped_task, func) when is_function(func, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.MayFail{} = mf ->
+        Task.async(fn ->
+          apply_failure(mf, func)
+        end)
+    end
+  end
+
+  @doc """
 
   ## Example
 
       iex> mapper = fn x -> (x + 2) end
-      iex> MayFail.failure(1) |> MayFail.map_success(mapper)
+      ...> MayFail.failure(1) |> MayFail.map_success(mapper)
       %Hike.MayFail{failure: 1, success: nil, is_success?: false}
 
       iex> MayFail.success(1) |> MayFail.map_success(mapper)
@@ -318,11 +377,40 @@ defmodule Hike.MayFail do
     do: failure(error)
 
   @doc """
+  Applies the provided function `mapper` to the success value of `MayFail` wrapped in a `Task` and
+  returns a new task with the result.
+
+  ## Examples
+
+      iex> task =  Task.async(fn -> Hike.MayFail.failure(:error) end)
+      ...> applied_task = map_success_async(task, fn x-> x end)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+
+
+      iex> task = Task.async(fn -> Hike.MayFail.success(10) end)
+      ...> applied_task = map_success_async(task, fn x-> x * x end)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: nil, success: 100, is_success?: true}
+
+  """
+
+  @spec map_success_async(Task.t(), func(t())) :: Task.t()
+  def map_success_async(wrapped_task, func) when is_function(func, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.MayFail{} = mf ->
+        Task.async(fn ->
+          map_success(mf, func)
+        end)
+    end
+  end
+
+  @doc """
 
   ## Example
 
       iex> mapper = fn x -> x + 2 end
-      iex> MayFail.failure(1) |> MayFail.map_failure(mapper)
+      ...> MayFail.failure(1) |> MayFail.map_failure(mapper)
       %Hike.MayFail{failure: 3, success: nil, is_success?: false}
 
       iex> MayFail.success(1) |> MayFail.map_failure(mapper)
@@ -341,20 +429,49 @@ defmodule Hike.MayFail do
     do: success(value)
 
   @doc """
+  Applies the provided function `mapper` to the failure value of `MayFail` wrapped in a `Task` and
+  returns a new task with the result.
+
+  ## Examples
+
+      iex> task =  Task.async(fn -> Hike.MayFail.failure(:error) end)
+      ...> applied_task = map_failure_async(task, fn x-> x end)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+
+
+      iex> task = Task.async(fn -> Hike.MayFail.success(10) end)
+      ...> applied_task = map_failure_async(task, &String.upcase/1)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: nil, success: 10, is_success?: true}
+
+  """
+
+  @spec map_failure_async(Task.t(), mapper(t())) :: Task.t()
+  def map_failure_async(wrapped_task, mapper) when is_function(mapper, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.MayFail{} = mf ->
+        Task.async(fn ->
+          map_failure(mf, mapper)
+        end)
+    end
+  end
+
+  @doc """
   Binds a function that returns a `MayFail` value for an `MayFail` in the `Failure` state.
   If the input is in the `Success` state, the function is not executed and the input is returned as it is.
 
   ## Example
 
       iex> binder = fn x -> MayFail.success(x + 2) end
-      iex> MayFail.failure(1) |> MayFail.bind_success(binder)
+      ...> MayFail.failure(1) |> MayFail.bind_success(binder)
       %Hike.MayFail{failure: 1, success: nil, is_success?: false}
 
       iex> MayFail.success(1) |> MayFail.bind_success(binder)
       %Hike.MayFail{failure: nil, success: 3, is_success?: true}
 
       iex> binder = fn x -> MayFail.failure(x + 2) end
-      iex>  MayFail.success(1) |> MayFail.bind_success(binder)
+      ...>  MayFail.success(1) |> MayFail.bind_success(binder)
       %Hike.MayFail{failure: 3, success: nil, is_success?: false}
 
   """
@@ -369,23 +486,52 @@ defmodule Hike.MayFail do
     do: failure(error)
 
   @doc """
+  Applies the provided function `binder` to the success value of `MayFail` wrapped in a `Task` and
+  returns a new task with the result.
+
+  ## Examples
+
+      iex> task =  Task.async(fn -> Hike.MayFail.failure(:error) end)
+      ...> binder = fn x -> MayFail.success(x + 2) end
+      ...> applied_task = bind_success_async(task, binder)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+
+
+      iex> task = Task.async(fn -> Hike.MayFail.success(10) end)
+      ...> binder = fn x -> MayFail.success(x + 2) end
+      ...> applied_task = bind_success_async(task, binder)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: nil, success: 12, is_success?: true}
+
+  """
+
+  @spec bind_success_async(Task.t(), binder(t())) :: Task.t()
+  def bind_success_async(wrapped_task, binder) when is_function(binder, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.MayFail{} = mf ->
+        Task.async(fn ->
+          bind_success(mf, binder)
+        end)
+    end
+  end
+
+  @doc """
   Binds a function that returns a `MayFail` value for an `MayFail` in the `Failure` state.
   If the input is in the `Success` state, the function is not executed and the input is returned as it is.
 
   ## Example
 
       iex> binder = fn x -> MayFail.success(x + 2) end
-      iex> MayFail.failure(1) |> MayFail.bind_failure(binder)
+      ...> MayFail.failure(1) |> MayFail.bind_failure(binder)
       %Hike.MayFail{failure: nil, success: 3, is_success?: true}
 
       iex> binder = fn x -> MayFail.failure(x + 2) end
-      iex>  MayFail.failure(1) |> MayFail.bind_failure(binder)
+      ...>  MayFail.failure(1) |> MayFail.bind_failure(binder)
       %Hike.MayFail{failure: 3, success: nil, is_success?: false}
 
       iex> MayFail.success(1) |> MayFail.bind_failure(binder)
       %Hike.MayFail{failure: nil, success: 1, is_success?: true}
-
-
   """
 
   @spec bind_failure(mayfail_failure(t_failure()), binder(t_failure())) :: mayfail_failure(tr())
@@ -397,6 +543,36 @@ defmodule Hike.MayFail do
           mayfail_failure(t_success())
   def bind_failure(%__MODULE__{success: value, is_success?: true} = _mayfail, _binder),
     do: success(value)
+
+  @doc """
+  Applies the provided function `binder` to the failure value of `MayFail` wrapped in a `Task` and
+  returns a new task with the result.
+
+  ## Examples
+
+      iex> task =  Task.async(fn -> Hike.MayFail.failure(:error) end)
+      ...> binder = fn x -> MayFail.success(x + 2) end
+      ...> applied_task = bind_failure_async(task, binder)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+
+
+      iex> task = Task.async(fn -> Hike.MayFail.success(10) end)
+      ...> applied_task = bind_failure_async(task, &String.upcase/1)
+      ...> Task.await(applied_task)
+      %Hike.MayFail{failure: nil, success: 10, is_success?: true}
+
+  """
+
+  @spec bind_failure_async(Task.t(), binder(t())) :: Task.t()
+  def bind_failure_async(wrapped_task, binder) when is_function(binder, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.MayFail{} = mf ->
+        Task.async(fn ->
+          bind_failure(mf, binder)
+        end)
+    end
+  end
 
   @doc """
 
@@ -421,6 +597,32 @@ defmodule Hike.MayFail do
       when is_function(success_fn, 1),
       do: success_fn.(x)
 
+  @doc """
+  Matches an `MayFail` value wrapped in a `Task` and applies the corresponding function asynchronously.
+
+  ## Examples
+
+      iex> task =  Task.async(fn -> Hike.MayFail.failure("Hello") end)
+      ...> applied_task =bind_failure_async(task, fn str -> MayFail.failure(String.upcase(str)) end)
+      ...> match_async(applied_task , fn x -> "value is : " <> x <> "."  end, fn (_)-> "No Result Found."  end)
+       "value is : HELLO."
+
+
+      iex> task = Task.async(fn -> Hike.MayFail.success("Hello") end)
+      ...> applied_task = map_success_async(task, &String.upcase/1)
+      ...> match_async(applied_task , fn x -> x  end, fn (y)-> "value is : " <> y <> "."  end)
+       "value is : HELLO."
+
+  """
+
+  @spec match_async(Task.t(), (t() -> term()), (t() -> term())) :: Task.t()
+  def match_async(wrapped_task, failure_fn, success_fn)
+      when is_function(failure_fn, 1) and is_function(success_fn, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.MayFail{} = mf ->
+        match(mf, failure_fn, success_fn)
+    end
+  end
   @doc """
   Check whether MayFail is in `Success` state or not.
 
@@ -450,4 +652,34 @@ defmodule Hike.MayFail do
   def is_failure?(%__MODULE__{is_success?: false} = _mayfail), do: true
   @spec is_failure?(mayfail_success()) :: false
   def is_failure?(_), do: false
+
+  @doc """
+  convert `MayFail` from `Success` state to `Option` `Some` state
+  and `MayFail` from `Failure` state to `Option` `None` state.
+
+  ## Example
+      iex> success(9) |> Hike.MayFail.to_option()
+      %Hike.Option{value: 9}
+      iex> failure(":error") |> Hike.MayFail.to_option()
+      %Hike.Option{value: nil}
+
+  """
+  def to_option(%MayFail{success: value, is_success?: true}), do: Hike.Option.some(value)
+  def to_option(%MayFail{is_success?: false}), do: Hike.Option.none()
+
+  @doc """
+  convert `MayFail` into respective `Either`.
+  if `MayFail` from `Success` state, `Either` will be return in `Right` state.
+  and `MayFail` from `Failure` state, `Either` will convert to `Either` `Left` state.
+
+  ## Example
+
+      iex> success(9)  |> Hike.MayFail.to_either
+      %Hike.Either{l_value: nil, r_value: 9, is_left?: false}
+
+      iex> failure(:error)|> Hike.MayFail.to_either
+      %Hike.Either{l_value: :error, r_value: nil, is_left?: true}
+  """
+  def to_either(%MayFail{success: value, is_success?: true}), do: Hike.Either.right(value)
+  def to_either(%MayFail{failure: value, is_success?: false}), do: Hike.Either.left(value)
 end

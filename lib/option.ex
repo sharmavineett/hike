@@ -4,9 +4,12 @@ defmodule Hike.Option do
   @moduledoc """
   The `Hike.Option` module provides an implementation of the Optional data type.
   It defines a struct `Option` with a single field `value` which can either be `@none nil`
-  or any other value of type `t`. This implementation provides functions to work with
-  Optional data, including mapping, filtering, applying and many more functions to the value
-  inside the Optional data.
+  or any other value of type `<T>`. This implementation provides functions to work with
+  Optional data including
+    * mapping,
+    * binding
+    * filtering,
+    * applying and many more functions to the value inside the Optional data.
 
   ## Example Usage
 
@@ -22,7 +25,7 @@ defmodule Hike.Option do
       iex> Hike.Option.apply(option, &(&1 + 10))
       %Hike.Option{value: 52}
 
-```elixir
+  ```elixir
   # Define a User struct
   defmodule User do
   @derive {Jason.Encoder, only: [:id,:age, :name]}
@@ -34,7 +37,7 @@ defmodule Hike.Option do
   import Hike.Option
 
   # Simulating a database fetch function
-  @spec fetch_user(number) :: Hike.Option.t()
+  @spec fetch_user(number) :: Hike.Option.option(%User{}) | Hike.Option.option()
   # Simulating a database fetch function
   def fetch_user(id) do
     # Simulating a database query to fetch a user by ID
@@ -49,18 +52,21 @@ defmodule Hike.Option do
 
   # Function to update the user's name to uppercase
   # This function takes a user, a real data type, and returns an elevated data type Option
+  # if `%User{}` could transform successfully return `Option` in `some` state or else in `none` state.
   def update_name_to_uppercase(user) do
-    uppercase_name = String.upcase(user.name)
-    some(%User{user | name: uppercase_name})
+    case user.name do
+     nil -> none()
+     name -> %User{user | name: String.upcase(user.name)} |> some
+    end
   end
 
 
-  #   for above function another version could be this is intentionally done to show bind functionality
+  #   for above function another version could be like this where user take real data type %User{}, and return update %User{}
   #   def update_name_to_uppercase(user) do
   #    uppercase_name = String.upcase(user.name)
   #    %User{user | name: uppercase_name}
   #  end
-  # for this case map function will be used like its been used for `increase_age_by1`
+  # for this case map function will be used like it's been used for `increase_age_by1`
 
 
   # Function to increase the user's age by one
@@ -121,31 +127,70 @@ defmodule Hike.Option do
 
   @typedoc """
   `func()` represent a function which take no parameter and return value of type `<TR>`.
+  ## Example
+
+      @spec whatever() :: atom
+      def whatever(), do: :ok
   """
   @type func :: (() -> tr)
 
   @typedoc """
   `func(t)` represent a function which take a parameter of type `<T>` and return a value of type `<TR>`.
+  ## Example
+
+      @spec add_one(number) :: number
+      def add_one(x), do: x + 1
   """
   @type func(t) :: (t -> tr)
 
   @typedoc """
   `mapper()` represent a mapping function which take no parameter and return a value of type `<TR>`.
+
+  ## Example
+
+      @spec whatever() :: atom
+      def whatever(), do: :ok
   """
   @type mapper :: (() -> tr)
 
   @typedoc """
   `mapper(t)` represent a mapping function which take a parameter of type `<T>` and return a value of type `<TR>`.
+
+  ## Example
+
+      @spec square(number) :: number
+      def square(x), do: x * x
   """
   @type mapper(t) :: (t -> tr)
 
   @typedoc """
-  `binder()` represent a binding(mapping) function which take no parameter and return an option of type `<TR>`.
+  `binder()` represent a binding(mapping) function which take no parameter and return an `Option` of type `<TR>`.
+
+  ## Example
+
+      @spec whatever() :: Hike.Option.option(atom)
+      def whatever(), do: some(:ok)
+
+      @spec whatever() :: Hike.Option.option()
+      def whatever(), do: none()
   """
   @type binder :: (() -> option(tr))
 
   @typedoc """
-  `binder(t)` represent a binding(mapping) function which take a parameter of type `<T>` and return an option of type `<TR>`.
+  `binder(t)` represent a binding(mapping) function which take a parameter of type `<T>` and return an `Option` of type `<TR>`.
+
+  ## Example
+
+      @spec square(pos_number) :: Hike.Option.option(number)
+      def square(x) when x > 0, do: x * x |> some()
+
+      @spec square(number) :: Hike.Option.option()
+      def square(x) do
+        case x when x < 0 do
+          true -> none()
+          false -> square(x)
+        end
+      end
   """
   @type binder(t) :: (t -> option(tr))
 
@@ -153,22 +198,30 @@ defmodule Hike.Option do
 
   @typedoc """
   Elevated data type of Option struct that represents `None` state.
+  ## Example
+
+  ```elixir
+  %Hike.Option{value: nil, is_some?: false}
+  ```
   """
-  @type option() :: %__MODULE__{value: nil}
+  @type option() :: %Option{value: nil}
 
   @typedoc """
   Elevated data type of Option struct that represents `Some` state and have a value of type `<T>`.
+
+  ## Example
+
+  ```elixir
+  %Hike.Option{value: 40, is_some?: true}
+  ```
   """
-  @type option(t) :: %__MODULE__{value: t}
+  @type option(t) :: %Option{value: t}
 
   defstruct value: @none
 
   ## Apply function region start
   @doc """
   Applies a given function to the value of an `Option` struct and returns the result as a new `Option`.
-    `OR`
-  Applies a given function stored in an option to the value of another option, and returns the result as a new option.
-
 
   ## Examples
 
@@ -186,29 +239,58 @@ defmodule Hike.Option do
       iex> Option.apply(option, upcase_string)
       %Option{value: "HELLO"}
 
-
   """
-
   @spec apply(option(t), func(t)) :: option(tr)
-  def apply(%__MODULE__{value: value} = _option, func)
+  def apply(%Option{value: value} = _option, func)
       when value != @none and is_function(func, 1),
       do: func.(value) |> some
 
-  @spec apply(option(), func() | func(t)) :: option()
-  def apply(%__MODULE__{value: @none} = opt, _func), do: opt
-
-  def apply(_, _), do: none()
+  @spec apply(option(), func()) :: option()
+  def apply(%Option{value: @none} = opt, func) when is_function(func, 0), do: opt
 
   ## Apply function region end
+  ## apply_async function region start
+
+  @doc """
+  async version on `apply` applies the `func` function to a value wrapped in a `Task` and returns a new task with the transformed value.
+
+  ## Examples
+
+      iex> task = Task.async(fn -> Hike.Option.some(10) end)
+      ...> mapped_task = apply_async(task, &(&1 * 2))
+      ...> Task.await(mapped_task)
+      %Hike.Option{value: 20}
+
+      iex> task = Task.async(fn -> Hike.Option.none() end)
+      iex> mapped_task = apply_async(task, &(&1))
+      iex> Task.await(mapped_task)
+      %Hike.Option{value: nil}
+  """
+
+  @spec apply_async(Task.t(), func(t())) :: Task.t()
+  def apply_async(wrapped_task, func) when is_function(func, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.Option{value: value} = opt ->
+        Task.async(fn ->
+          if value == nil do
+            Option.none()
+          else
+            Option.apply(opt, func)
+          end
+        end)
+    end
+  end
+
+  ## apply_async function region end
 
   ## bind function region start
 
   @doc """
-  Transforms an `Option<T>` struct with a non-nil value using a binder function that returns another `Option<TR>` struct.
+  Transforms an `Option<T>` struct with a non-nil value, using a binder function that returns another `Option`
+  option in none state or `Option<TR>`option in some state.
 
-  If the input `Option` has a `nil` value, returns a new `Option` struct with a `nil` value.
-  if you have a function that return `Option<TR>` and you want to apply mapping then use bind function to avoid double elevation.
-
+  ** If the input `Option` has a `nil` value, returns a new `Option` struct with a `nil` value.
+  if you have a function that return `Option<TR>` and you want to apply mapping then use bind function to avoid double elevation
   ## Examples
 
       iex> option = %Option{value: 42}
@@ -222,19 +304,53 @@ defmodule Hike.Option do
       iex> Option.bind(Option.none() )
       %Option{value: nil}
 
-
   """
 
   @spec bind(option(t), binder(t)) :: option(tr)
-  def bind(%__MODULE__{value: value}, func)
+  def bind(%Option{value: value}, func)
       when value != @none and is_function(func, 1) do
     func.(value)
   end
 
-  @spec bind(option(), binder() | binder(t)) :: option()
-  def bind(%__MODULE__{value: @none} = opt, _func), do: opt
+  @spec bind(option(), binder()) :: option()
+  def bind(%Option{value: @none} = opt, func) when is_function(func, 0), do: opt
 
   ## bind function region end
+
+  ## apply_async function region start
+
+  @doc """
+  async version on `bind` applies the `binder` function to a value wrapped in a `Task` and returns a new task with the transformed value.
+
+
+  ## Examples
+
+      iex> task = Task.async(fn -> Hike.Option.some(10) end)
+      ...> mapped_task = bind_async(task, fn x -> Hike.Option.some(x + 1) end)
+      ...> Task.await(mapped_task)
+      %Hike.Option{value: 20}
+
+      iex> task = Task.async(fn -> Hike.Option.none() end)
+      iex> mapped_task = bind_async(task, fn x -> Hike.Option.some(x + 1) end)
+      iex> Task.await(mapped_task)
+      %Hike.Option{value: nil}
+  """
+
+  @spec bind_async(Task.t(), binder(t())) :: Task.t()
+  def bind_async(wrapped_task, func) when is_function(func, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.Option{value: value} = opt ->
+        Task.async(fn ->
+          if value == nil do
+            Option.none()
+          else
+            Option.bind(opt, func)
+          end
+        end)
+    end
+  end
+
+  ## bind_async function region end
 
   ## filter function region start
   @doc """
@@ -261,7 +377,7 @@ defmodule Hike.Option do
 
   """
   @spec filter(option(), func()) :: option()
-  def filter(%__MODULE__{value: @none} = opt, _func), do: opt
+  def filter(%Option{value: @none} = opt, func) when is_function(func, 0), do: opt
 
   @spec filter(option(t), func(t)) :: option(tr)
   def filter(%Option{value: value}, func) when value != @none and is_function(func, 1) do
@@ -271,8 +387,6 @@ defmodule Hike.Option do
       %Option{value: @none}
     end
   end
-
-  def filter(_option, _func), do: none()
 
   ## filter function region end
 
@@ -290,7 +404,7 @@ defmodule Hike.Option do
 
   """
   @spec is_none?(option() | option(t)) :: boolean()
-  def is_none?(%__MODULE__{value: value}), do: value == @none
+  def is_none?(%Option{value: value}), do: value == @none
 
   ## is_none function region end
 
@@ -309,7 +423,7 @@ defmodule Hike.Option do
 
   """
   @spec is_some?(option() | option(t)) :: boolean()
-  def is_some?(%__MODULE__{value: value}), do: value != @none
+  def is_some?(%Option{value: value}), do: value != @none
 
   ## is_some function region end
 
@@ -318,7 +432,8 @@ defmodule Hike.Option do
   Applies the given mapping function to the value inside the `Option` struct and returns a new `Option`
   struct containing the transformed value. If the input `Option` struct is `@none`, the function
   returns a new `Option` struct in none state.
-    ## Examples
+
+  ## Examples
 
         iex> Option.map(Option.some("hello"), fn x -> String.upcase(x) end)
         %Option{value: "HELLO"}
@@ -328,33 +443,59 @@ defmodule Hike.Option do
 
   """
   @spec map(option(t), mapper(t)) :: option(tr)
-  def map(%__MODULE__{value: value} = _option, func)
+  def map(%Option{value: value} = _option, func)
       when value != @none and is_function(func, 1),
       do: func.(value) |> some
 
-  @spec map(option(), mapper() | mapper(t)) :: option()
-  def map(%__MODULE__{value: @none} = opt, _func), do: opt
+  @spec map(option(), mapper()) :: option()
+  def map(%Option{value: @none} = opt, func) when is_function(func, 0), do: opt
 
   ## map function region end
+
+  ## map_async function region start
+
+  @doc """
+  async version on `map` Applies the `mapper` function to a value wrapped in a `Task` and returns a new task with the mapped value.
+
+  ## Examples
+
+      iex> task = Task.async(fn -> Hike.Option.some(10) end)
+      ...> mapped_task = map_async(task, &(&1 * 2))
+      ...> Task.await(mapped_task)
+      %Hike.Option{value: 20}
+
+      iex> task = Task.async(fn -> Hike.Option.none() end)
+      iex> mapped_task = map_async(task, &(&1))
+      iex> Task.await(mapped_task)
+      %Hike.Option{value: nil}
+  """
+
+  @spec map_async(Task.t(), mapper(t())) :: Task.t()
+  def map_async(wrapped_task, mapper) when is_function(mapper, 1) do
+    case Task.await(wrapped_task) do
+      %Hike.Option{value: value} = opt ->
+        Task.async(fn ->
+          if value == nil do
+            %Hike.Option{value: nil}
+          else
+            Option.map(opt, mapper)
+          end
+        end)
+    end
+  end
+
+  ## map_async function region end
 
   ## match function region start
 
   @doc """
-  Matches on an `option` and returns the result of the matching function.
-  Calls `some_fun` with the value of the Option if the Option is in `:some` state,
-  or calls `none_fun` if the Option is in `:none` state.
+  Pattern matches on an `option` and returns the result of the respective matching function.
+  Calls `some_fun` with the value of the Option if the Option is in `some` state,
+  or calls `none_fun` if the Option is in `none` state.
 
   ## Examples
 
       iex> import Hike.Option
-
-      # Match on `some` value with a matching function
-      iex> match(some(10), &(&1 * 2))
-      # => 20
-
-      # Match on `none` value with a none-matching function
-      iex> match(none(), fn -> "no value" end)
-      # => "no value"
 
       # Match on `some` value with a matching function and on `none` value with a none-matching function
       iex> match(some("hello"), &(&1 <> " world"), fn -> "no value" end)
@@ -364,12 +505,6 @@ defmodule Hike.Option do
       iex> match(none(), &(&1 * 2), fn -> "no value" end)
       # => "no value"
 
-      iex> Option.match(Option.some("hello"), fn x -> String.upcase(x) end)
-      "HELLO"
-
-      iex> Option.match(Option.none(),  fn -> "nothing" end)
-      "nothing"
-
       iex> Option.match(Option.some("hello"), fn x -> String.upcase(x) end, fn -> "nothing" end )
       "HELLO"
 
@@ -378,18 +513,8 @@ defmodule Hike.Option do
 
   """
 
-  @spec match(option(), func()) :: tr()
-  def match(%__MODULE__{value: @none}, none_fun) when is_function(none_fun, 0) do
-    none_fun.()
-  end
-
-  @spec match(option(t), func(t)) :: tr()
-  def match(%__MODULE__{value: value}, some_fun)
-      when value != @none and is_function(some_fun, 1),
-      do: some_fun.(value)
-
   @spec match(option(t) | option(), func(t), func()) :: tr()
-  def match(%__MODULE__{value: value}, some_fun, none_fun)
+  def match(%Option{value: value}, some_fun, none_fun)
       when is_function(some_fun, 1) and is_function(none_fun, 0) do
     case value != @none do
       true -> some_fun.(value)
@@ -403,6 +528,35 @@ defmodule Hike.Option do
 
   ## match function region end
 
+  ## map_async function region start
+
+  @doc """
+  async version on `match` pattern matches on an `Option`  value wrapped in a `Task` and returns
+  the result of the matching function.
+
+  ## Examples
+
+      iex> task = Task.async(fn -> Hike.Option.some(10) end)
+      iex> mapped_task = map_async(task, &(&1 * 2))
+      iex> match_async(mapped_task , fn x -> "value is : " <> x <> "."  end, fn ()-> "No Result Found."  end)
+       "value is : 20."
+
+      iex> task = Task.async(fn -> Hike.Option.none() end)
+      iex> mapped_task = map_async(task, &(&1))
+      iex> match_async(mapped_task , fn x -> "value is : " <> x <> "."  end, fn ()-> "No Result Found."  end)
+       "No Result Found."
+  """
+  @spec match(Task.t(), func(t), func()) :: tr()
+  def match_async(wrapped_task, some_fun, none_fun)
+      when is_function(some_fun, 1) and is_function(none_fun, 0) do
+    case Task.await(wrapped_task) do
+      %Hike.Option{} = opt ->
+        match(opt, some_fun, none_fun)
+    end
+  end
+
+  ## match_async function region end
+
   ## some function region start
   @doc """
   Creates an `Option` in `Some` state
@@ -413,7 +567,7 @@ defmodule Hike.Option do
       %Option{value: "hello"}
   """
   @spec some(t) :: option(t)
-  def some(value) when value != @none, do: %__MODULE__{value: value}
+  def some(value) when value != @none, do: %Option{value: value}
 
   ## some function region end
 
@@ -428,7 +582,42 @@ defmodule Hike.Option do
 
   """
   @spec none() :: option()
-  def none(), do: %__MODULE__{value: @none}
+  def none(), do: %Option{value: @none}
 
   ## none function region end
+
+  @doc """
+  convert `Option` into respective `Either`.
+    if `Option` is in `None` state `Either` will be return in `Left` state. and `Option` from `Some` state will convert to `Either` `Right` state.
+
+  ## Example
+
+      iex> Hike.option(9) |> Hike.Option.to_either
+      %Hike.Either{l_value: nil, r_value: 9, is_left?: false}
+
+      iex> Hike.option() |> Hike.Option.to_either
+      %Hike.Either{l_value: :error, r_value: nil, is_left?: true}
+
+
+  """
+  @spec to_either(Hike.Option.option()) :: Hike.Either.either_left(:error)
+  def to_either(%Option{value: @none}), do: Hike.Either.left(:error)
+  @spec to_either(Hike.Option.option(t())) :: Hike.Either.either_right()
+  def to_either(%Option{value: value}), do: Hike.Either.right(value)
+
+  @doc """
+  convert `Option` into respective `MayFail`.
+    if `Option` is in `None` state `MayFail` will be return in `Failure` state. and `Option` from `Some` state will convert to `MayFail` `Success` state.
+  ## Example
+      iex(13)> Hike.option() |> Hike.Option.to_mayfail
+      %Hike.MayFail{failure: :error, success: nil, is_success?: false}
+
+      iex(14)> Hike.option(3) |> Hike.Option.to_mayfail
+      %Hike.MayFail{failure: nil, success: 3, is_success?: true}
+
+  """
+  @spec to_mayfail(Hike.Option.option()) :: Hike.MayFail.mayfail_failure(:error)
+  def to_mayfail(%Option{value: @none}), do: Hike.MayFail.failure(:error)
+  @spec to_mayfail(Hike.Option.option(t())) :: Hike.MayFail.mayfail_success(t())
+  def to_mayfail(%Option{value: value}), do: Hike.MayFail.success(value)
 end

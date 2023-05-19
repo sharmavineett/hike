@@ -1,10 +1,41 @@
 defmodule Hike do
   @moduledoc """
-  The `Hike` module provides an implementation of the Optional data types.
+  Hike is a library that provides elevated data types,
+  namely Option, Either, and MayFail, in the Elixir programming language.
+  These elevated data types offer additional functionality and safety compared to the basic data types provided by Elixir.
+
+  `Option`: The `Hike.Option` type represents a value that may or may not be present.
+  It allows you to handle cases where a value might be absent without resorting to using nil or throwing exceptions.
+  The Option type provides functions like bind, map, and match to perform operations on the encapsulated value while handling the absence of the value gracefully.
+
+  `Either`: The `Hike.Either` type represents a value that can be one of two possibilities: left or right.
+    It is commonly used to handle cases where a computation can result in either a successful outcome or a specific error.
+    The `Either` type provides functions like `bind_left`, `bind_right`, `map_left`, `map_right`, and `match` to perform operations on the encapsulated
+    values based on their respective sides.
+
+  `MayFail`: The `Hike.MayFail` type combines the benefits of both `Option` and `Either`.
+     It represents a value that can either succeed or fail, similar to Either, but allows for more fine-grained error handling and composition.
+     It provides functions like bind_success, bind_failure, map_success, and map_failure to work with the success and failure cases.
+     The primary purpose of `Hike` is to enhance
+    * expressiveness,
+    * safety,
+    * and predictability in code by providing these elevated data types.
+
+    They enable developers to handle different scenarios and errors in a more structured and controlled manner,
+    reducing the reliance on exceptions and mutable state.
+
+  The functional programming paradigm is promoted by focusing on
+    * immutability,
+    * pure functions,
+    * and composition, which leads to more maintainable and robust code.
+
+    By using Hike, developers can write code that is easier to reason about, handle potential errors explicitly,
+   and compose operations on elevated data types in a more concise and declarative manner.
+
   It defines
 
   * a struct `Hike.Option` with a single field `value` which can either be `nil`
-  or any other value of type `t`.
+  or any other value of type `<T>`.
 
   * a struct `Hike.Either` that represents an "either/or" value.
     It can contain either a `left` value or a `right` value, but not both
@@ -388,6 +419,34 @@ defmodule Hike do
       func.(arg1, arg2, arg3, arg4) |> Hike.MayFail.success()
     rescue
       x -> Hike.MayFail.failure(x.message)
+    end
+  end
+
+  def map_async(task, func) do
+    case Task.await(task) |> IO.inspect() do
+      %Hike.Option{value: nil} = opt ->
+        rv = map(opt, func)
+        Task.async(fn -> rv end)
+
+      %Hike.Option{value: value} = opt ->
+        rv = map(opt, func)
+        Task.async(fn -> rv end)
+
+      %Hike.Either{l_value: lvalue, is_left?: true} = eth ->
+        rv = map_left(eth, func)
+        Task.async(fn -> rv end)
+
+      %Hike.Either{r_value: rvalue, is_left?: false} = eth ->
+        rv = map_left(eth, func)
+        Task.async(fn -> rv end)
+
+      %Hike.MayFail{failure: value, is_success?: false} = mayfail ->
+        rv = map_failure(mayfail, func)
+        Task.async(fn -> rv end)
+
+      %Hike.MayFail{success: value, is_success?: true} = mayfail ->
+        rv = map_success(mayfail, func)
+        Task.async(fn -> rv end)
     end
   end
 end

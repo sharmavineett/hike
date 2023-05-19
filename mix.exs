@@ -1,7 +1,7 @@
 defmodule Hike.MixProject do
   use Mix.Project
   @source_url "https://github.com/sharmavineett/hike"
-  @version "0.0.2"
+  @version "0.1.0"
 
   def project do
     [
@@ -34,7 +34,7 @@ defmodule Hike.MixProject do
   defp package do
     [
       licenses: ["Apache-2.0"],
-      maintainers: ["Vineet Sharma"],
+      maintainers: ["Sharma Vineet"],
       files: ~w(CHANGELOG.md lib LICENSE mix.exs README.md),
       links: %{
         "GitHub" => @source_url
