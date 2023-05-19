@@ -422,31 +422,4 @@ defmodule Hike do
     end
   end
 
-  def map_async(task, func) do
-    case Task.await(task) |> IO.inspect() do
-      %Hike.Option{value: nil} = opt ->
-        rv = map(opt, func)
-        Task.async(fn -> rv end)
-
-      %Hike.Option{value: value} = opt ->
-        rv = map(opt, func)
-        Task.async(fn -> rv end)
-
-      %Hike.Either{l_value: lvalue, is_left?: true} = eth ->
-        rv = map_left(eth, func)
-        Task.async(fn -> rv end)
-
-      %Hike.Either{r_value: rvalue, is_left?: false} = eth ->
-        rv = map_left(eth, func)
-        Task.async(fn -> rv end)
-
-      %Hike.MayFail{failure: value, is_success?: false} = mayfail ->
-        rv = map_failure(mayfail, func)
-        Task.async(fn -> rv end)
-
-      %Hike.MayFail{success: value, is_success?: true} = mayfail ->
-        rv = map_success(mayfail, func)
-        Task.async(fn -> rv end)
-    end
-  end
 end
